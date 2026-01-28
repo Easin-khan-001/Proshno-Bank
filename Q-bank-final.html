@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="bn" class="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>প্রশ্ন ব্যাংক ও মডেল টেস্ট সিস্টেম</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        // ✅ Custom Color based on #9112BC
+                        'custom-purple': {
+                            DEFAULT: '#9112BC', // Base for buttons, primary actions
+                            '50': '#FAF3FC',
+                            '100': '#F3E3F8',
+                            '200': '#E4C9F1',
+                            '300': '#D4AEE9',
+                            '400': '#C088E0',
+                            '500': '#A85DD4',
+                            '600': '#9112BC', // Primary Dark Shade (Used for Header BG)
+                            '700': '#7D0A9F',
+                            '800': '#690786',
+                            '900': '#44015E',
+                            '950': '#29003C',
+                        },
+                    },
+                    // ✅ Fixed: Custom Font Sizes added to Tailwind config
+                    fontSize: {
+                        'custom-xxs': ['0.68rem', { lineHeight: '1.1' }],
+                        'custom-xs': ['0.78rem', { lineHeight: '1.2' }],
+                    }
+                },
+            },
+        };
+    </script>
+
+    <style>
+        /* 0. Custom Z-Index */
+        .z-35 {
+            z-index: 35;
+        }
+
+        .z-40 {
+            z-index: 40;
+        }
+
+        /* Header Z-index */
+        .z-60 {
+            z-index: 60;
+        }
+
+        /* Filter Sidebar Z-index */
+        .z-70 {
+            z-index: 70;
+        }
+
+        /* A4 Preview Modal Z-index */
+
+        /* 1. Global Body & Layout Fixes */
+        body {
+            overflow-x: hidden;
+        }
+
+        .no-scroll {
+            overflow: hidden !important;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 2. Left Navigation Sidebar Styling (Desktop-only scroll) */
+        .sticky-sidebar {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            margin-right: -10px;
+            padding-right: 10px;
+            z-index: 30;
+        }
+
+        /* 3. Question List Scroll Container: Height on Desktop */
+        #question-list-scroll-wrapper {
+            height: auto;
+            overflow-y: visible;
+        }
+
+        @media (min-width: 1024px) {
+            #question-list-scroll-wrapper {
+                /* 73px Header + 50px Filter Bar + 20px margin = 143px total height above list */
+                height: calc(100vh - 143px);
+                overflow-y: auto;
+            }
+        }
+
+        /* 4. Filter Sidebar Styling (Full-screen Overlay on Mobile) */
+        #filter-sidebar {
+            width: 320px;
+            right: -320px;
+            top: 0;
+            bottom: 0;
+            position: fixed;
+            transition: right 0.3s ease-in-out;
+            z-index: 60;
+            border-left: 2px solid #9112BC;
+            overflow-y: auto;
+        }
+
+        #filter-sidebar.open {
+            right: 0;
+            box-shadow: -10px 0 25px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Mobile: Full-screen width on small devices */
+        @media (max-width: 640px) {
+            #filter-sidebar {
+                width: 100%;
+                right: -100%;
+            }
+        }
+
+        /* 5. A4 Preview Styling (Desktop Sticky) */
+        #a4-preview-wrapper {
+            position: sticky;
+            top: 73px;
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
+            padding-bottom: 2rem;
+        }
+
+        #a4-preview {
+            aspect-ratio: 210 / 297;
+            min-height: 400px;
+            overflow: hidden;
+            width: 100%;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 6. Mobile Modal Styling (A4 Preview) */
+        #a4-preview-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 70;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #a4-preview-modal.open {
+            display: flex;
+        }
+
+        #a4-preview-modal-content {
+            width: 95%;
+            max-width: 500px;
+            max-height: 90%;
+            overflow-y: auto;
+            border-radius: 0.5rem;
+        }
+
+        /* 7. Active/Selected States (using custom-purple) */
+        .filter-btn.active {
+            background-color: #9112BC !important;
+            color: white !important;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .question-card.selected {
+            background-color: #F3E3F8;
+            /* custom-purple-100 */
+            border-color: #9112BC !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .dark .question-card.selected {
+            background-color: #44015E;
+            /* custom-purple-900 */
+            border-color: #A85DD4 !important;
+            /* custom-purple-500 */
+        }
+
+        /* 8. Print Styles */
+        @media print {
+            .a4-print-area {
+                width: 210mm;
+                min-height: 297mm;
+                margin: 0;
+                padding: 15mm;
+                box-shadow: none;
+                background-color: white;
+                overflow: hidden !important;
+                font-size: 9pt;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            /* Ensure two-column layout is only applied when needed */
+            .two-column-layout-print {
+                column-count: 2;
+                column-gap: 10mm;
+                height: auto;
+            }
+
+            /* Force questions to stay within one column */
+            .preview-list li {
+                page-break-inside: avoid;
+                break-inside: avoid-column;
+                padding-top: 1px;
+                margin-left: 10px;
+                margin-bottom: 5px;
+            }
+
+            .cq-preview-content {
+                page-break-inside: avoid;
+                break-inside: avoid-column;
+            }
+        }
+
+        /* 9. Live Two-Column Layout (for desktop preview) */
+        .two-column-layout-live {
+            column-count: 2;
+            column-gap: 1.5rem;
+            /* 6 in Tailwind */
+        }
+
+        .two-column-layout-live li {
+            break-inside: avoid-column;
+        }
+
+        .hidden-page-2 {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-x-hidden">
+
+    <header
+        class="bg-custom-purple-700 dark:bg-gray-900 shadow-xl sticky top-0 z-40 py-3 px-4 sm:px-6 flex items-center justify-between no-print transition-colors duration-300">
+        <div class="flex items-center space-x-3">
+            <div
+                class="w-14 h-10 bg-white text-custom-purple-700 rounded-lg flex items-center justify-center font-extrabold text-3xl shadow-inner hidden sm:flex">
+                E</div>
+            <!-- <img src="assets/icon.png" width="50"  alt=""> -->
+            <h1 class="text-4xl font-extrabold text-white">EduRLab</h1>
+        </div>
+        <div class="flex items-center space-x-2">
+
+            <button id="theme-toggle-btn"
+                class="p-2 rounded-full text-white hover:bg-white/10 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white">
+                <svg class="w-5 h-5" id="sun-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 3v1m0 16v1m9-9h1M3 12H2m15.325-4.275l.707-.707M3.987 3.987l.707.707m0 12.026l-.707.707m12.026 0l.707-.707M6.343 6.343l-.707-.707m1.625 16.276a2 2 0 001.077 0c1.803-.385 3.597-.385 5.399 0 .444.094.9-.02 1.25-.333l1.832-1.654a2 2 0 00.373-2.189l-.275-1.015a9.75 9.75 0 00-1.248-3.523l-.105-.125c-.217-.248-.445-.494-.679-.728-.593-.593-1.22-.97-1.921-1.127a9.75 9.75 0 00-4.041 0c-.701.157-1.328.534-1.921 1.127-.234.234-.462.479-.679.728l-.105.125A9.75 9.75 0 003.356 12.35l-.275 1.015a2 2 0 00.373 2.189l1.832 1.654c.35.313.806.427 1.25.333z">
+                    </path>
+                </svg>
+                <svg class="w-5 h-5 hidden" id="moon-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                    </path>
+                </svg>
+            </button>
+
+            <button onclick="openA4PreviewModal()" id="mobile-preview-button-header"
+                class="lg:hidden flex items-center space-x-1 p-2 rounded-full text-white hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                    </path>
+                </svg>
+                <span class="text-sm font-bold" id="mobile-preview-count">0</span>
+            </button>
+
+            <button
+                class="flex items-center p-2 rounded-full text-white hover:bg-white/10 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <div id="app" class="grid lg:grid-cols-[1fr_2fr_2fr] min-h-screen">
+
+        <aside id="left-nav-sidebar"
+            class="sticky-sidebar  bg-white dark:bg-gray-800 p-4 shadow-2xl border-r border-gray-200 dark:border-gray-700 no-print hidden lg:block z-30">
+
+            <h2 class="text-xl font-bold text-custom-purple-700 dark:text-custom-purple-400 mb-4 border-b pb-2">বিষয়
+                নির্বাচন</h2>
+            <div id="pc-selection-area" class="space-y-4">
+                <div>
+                    <label for="class-select"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ক্লাস</label>
+                    <select id="class-select"
+                        class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-custom-purple-500 focus:border-custom-purple-500">
+                        <option>Class 9</option>
+                        <option>Class 10</option>
+                        <option>HSC</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="subject-select"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">বিষয়</label>
+                    <select id="subject-select"
+                        class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-custom-purple-500 focus:border-custom-purple-500">
+                        <option>বাংলা</option>
+                        <option>গণিত</option>
+                        <option>বিজ্ঞান</option>
+                    </select>
+                </div>
+                <div id="chapter-select-container">
+                    <label for="chapter-select"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">অধ্যায়</label>
+                    <select id="chapter-select"
+                        class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-custom-purple-500 focus:border-custom-purple-500">
+                        <option value="1">অধ্যায় ১: শব্দ ও বাক্য</option>
+                        <option value="2">অধ্যায় ২: ধ্বনি ও বর্ণ</option>
+                        <option value="3">অধ্যায় ৩: প্রকৃতি ও প্রত্যয়</option>
+                    </select>
+                </div>
+
+                <div class="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">প্রশ্নপত্রের
+                        ধরণ</label>
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <input type="radio" name="filter_mode_pc" value="all" checked
+                                onchange="toggleFilterMode(this.value, 'pc')"
+                                class="w-4 h-4 text-custom-purple-600 bg-gray-100 border-gray-300 focus:ring-custom-purple-500 dark:bg-gray-600 dark:border-gray-500">
+                            <span class="ml-2">সকল প্রশ্ন</span>
+                        </label>
+                        <label class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <input type="radio" name="filter_mode_pc" value="suggestion"
+                                onchange="toggleFilterMode(this.value, 'pc')"
+                                class="w-4 h-4 text-custom-purple-600 bg-gray-100 border-gray-300 focus:ring-custom-purple-500 dark:bg-gray-600 dark:border-gray-500">
+                            <span class="ml-2">সাজেশন</span>
+                        </label>
+                        <label class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <input type="radio" name="filter_mode_pc" value="model_test"
+                                onchange="toggleFilterMode(this.value, 'pc')"
+                                class="w-4 h-4 text-custom-purple-600 bg-gray-100 border-gray-300 focus:ring-custom-purple-500 dark:bg-gray-600 dark:border-gray-500">
+                            <span class="ml-2">মডেল টেস্ট</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="pc-dynamic-filters">
+                    <!-- <div id="pc-source-filter">
+                        <label for="pc-source-select"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 mt-4">প্রশ্নের উৎস
+                            (Source)</label>
+                        <select id="pc-source-select"
+                            class="w-full p-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-custom-purple-500 focus:border-custom-purple-500 transition-colors shadow-sm">
+                            <option value="all">সকল উৎস</option>
+                            <option value="board">বোর্ড প্রশ্ন</option>
+                            <option value="school">বিখ্যাত স্কুলের প্রশ্ন</option>
+                            <option value="custom">নিজস্ব প্রশ্ন</option>
+                        </select>
+                    </div> -->
+                    <div id="pc-year-filter" class="hidden mt-4">
+                        <label for="pc-year-select"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">সাল (Year)</label>
+                        <select id="pc-year-select"
+                            class="w-full p-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-custom-purple-500 focus:border-custom-purple-500 transition-colors shadow-sm">
+                            <option>২০২৪</option>
+                            <option>২০২৩</option>
+                            <option>২০২২</option>
+                            <option>২০২১</option>
+                            <option>২০২০</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
+
+
+
+            <div class="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wider">স্পন্সরড
+                    কন্টেন্ট</p>
+                <div
+                    class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg flex items-center justify-center h-40 border border-dashed border-gray-400 dark:border-gray-600">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
+                        **এখানে বিজ্ঞাপন**
+                    </p>
+                </div>
+            </div>
+            <div class=" pt-4  border-gray-200 dark:border-gray-700">
+
+                <div
+                    class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg flex items-center justify-center h-40 border border-dashed border-gray-400 dark:border-gray-600">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
+                        **এখানে বিজ্ঞাপন**
+                    </p>
+                </div>
+            </div>
+        </aside>
+
+
+        <div class="lg:col-span-1 w-full">
+
+            <div
+                class="sticky top-[63px] z-0 bg-gray-50 dark:bg-gray-900 py-3 mb-4 no-print transition-colors duration-300 border-b border-gray-200 dark:border-gray-700 shadow-md">
+                <div class="flex justify-end px-4 sm:px-8 lg:px-4">
+                    <button id="filter-cq" data-type="cq" title="Creative Questions (CQ)"
+                        class="filter-btn py-2 px-3 mr-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors active">
+                        
+                        <p>CQ</p>
+                    </button>
+
+
+                    <button id="filter-mcq" data-type="mcq" title="Multiple Choice Questions (MCQ)"
+                        class="filter-btn py-2 px-3 mr-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                        
+                        <p>MCQ</p>
+                    </button>
+
+                    <button onclick="toggleFilterSidebar()" title="Filter Options"
+                        class="py-2 px-3 bg-custom-purple-500 text-white font-semibold rounded-lg hover:bg-custom-purple-600 transition-colors flex items-center justify-center shadow-md">
+                        
+                        <p>Filter</p>
+                    </button>
+                </div>
+            </div>
+
+            <section id="qbank-section" class="content-section px-4 sm:px-8 pb-20">
+                <div id="left-panel">
+                    <div id="question-list-scroll-wrapper">
+                        <div id="question-list" class="space-y-4">
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+
+        <div
+            class="lg:col-span-1 p-4 hidden lg:block border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl">
+            <div id="a4-preview-wrapper">
+                <h2 class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-4 no-print">লাইভ প্রিভিউ
+                </h2>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 no-print border-b pb-2">নির্বাচিত: <span
+                        id="selected-count" class="font-bold text-red-600">0</span> টি | মোট নম্বর: <span
+                        id="preview-marks" class="font-bold text-red-600">0</span></p>
+
+                <div id="a4-preview"
+                    class="a4-print-area bg-white border border-gray-300 dark:border-gray-600 shadow-inner p-6 sm:p-8 mb-4 text-black text-custom-xs print:shadow-none print:border-0 rounded-lg">
+                    <div class="text-center mb-6 border-b-2 border-custom-purple-200 pb-2">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900" id="header-school-name">ঢাকা মডেল হাই
+                            স্কুল</h3>
+                        <p class="text-xs sm:text-sm">বিষয়: <span id="preview-subject">বাংলা</span> | পূর্ণমান: <span
+                                id="preview-marks-header">0</span> | সময়: ২ ঘণ্টা | <span id="page-display">Page
+                                1/1</span></p>
+                    </div>
+
+                    <ol id="preview-question-list" class="preview-list list-decimal pl-5 space-y-2">
+                    </ol>
+                </div>
+
+                <div class="space-y-2 no-print">
+                    <button onclick="toggleA4Page()" id="page-toggle-btn"
+                        class="w-full py-2 text-sm bg-custom-purple-600 text-white font-semibold rounded-lg hover:bg-custom-purple-700 transition-colors hidden shadow-md">
+                        Page 2/2 দেখান ➡️
+                    </button>
+                    <button onclick="window.print()"
+                        class="w-full py-2 text-sm bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center shadow-md">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 17h2v5H5v-5h2m0-5h10v5H7v-5zM7 3h10v2H7V3zM7 7h10v2H7V7z"></path>
+                        </svg>
+                        Download PDF / Print
+                    </button>
+                    <button onclick="openHeaderModal()"
+                        class="w-full py-2 text-xs bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors">Edit
+                        Header/Logo</button>
+                    <label class="flex items-center space-x-2 text-xs text-gray-700 dark:text-gray-300">
+                        <input type="checkbox" id="include-answer-key"
+                            class="w-3 h-3 text-custom-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-custom-purple-500 dark:bg-gray-700 dark:border-gray-600">
+                        <span>উত্তরপত্র যোগ করুন</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div id="filter-sidebar" class="bg-white dark:bg-gray-800 p-6 no-print">
+
+            <div
+                class="flex justify-between items-center mb-6 pb-3 border-b border-custom-purple-200 dark:border-custom-purple-900">
+                <h3 class="text-xl font-extrabold text-custom-purple-700 dark:text-custom-purple-400 flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707v5.828a1 1 0 01-1.447.894l-4.243-2.122A1 1 0 013 15.586V4z">
+                        </path>
+                    </svg>
+                    নির্বাচন ও ফিল্টার
+                </h3>
+                <button onclick="toggleFilterSidebar()"
+                    class="p-2 rounded-full text-gray-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <div class="lg:hidden space-y-4 pb-6 border-b border-gray-200 dark:border-gray-700">
+                    <h4 class="text-base font-bold text-custom-purple-600 dark:text-custom-purple-400">ক্লাস/বিষয়
+                        নির্বাচন</h4>
+                    <div>
+                        <label for="class-select-mobile"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ক্লাস</label>
+                        <select id="class-select-mobile"
+                            class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-custom-purple-500 focus:border-custom-purple-500">
+                            <option>Class 9</option>
+                            <option>Class 10</option>
+                            <option>HSC</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="subject-select-mobile"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">বিষয়</label>
+                        <select id="subject-select-mobile"
+                            class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-custom-purple-500 focus:border-custom-purple-500">
+                            <option>বাংলা</option>
+                            <option>গণিত</option>
+                            <option>বিজ্ঞান</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="chapter-select-mobile"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">অধ্যায়</label>
+                        <select id="chapter-select-mobile"
+                            class="w-full p-2 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-custom-purple-500 focus:border-custom-purple-500">
+                            <option value="1">অধ্যায় ১: শব্দ ও বাক্য</option>
+                            <option value="2">অধ্যায় ২: ধ্বনি ও বর্ণ</option>
+                            <option value="3">অধ্যায় ৩: প্রকৃতি ও প্রত্যয়</option>
+                        </select>
+                    </div>
+                </div>
+
+               <!--  <div class="pt-4 border-b border-gray-200 dark:border-gray-700 space-y-2">
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">প্রশ্নপত্রের
+                        ধরণ</label>
+                    <div class="flex items-center space-x-4 mb-4">
+                        <label class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <input type="radio" name="filter_mode_mobile" value="all" checked
+                                onchange="toggleFilterMode(this.value, 'mobile')"
+                                class="w-4 h-4 text-custom-purple-600 bg-gray-100 border-gray-300 focus:ring-custom-purple-500 dark:bg-gray-600 dark:border-gray-500">
+                            <span class="ml-2">সকল প্রশ্ন</span>
+                        </label>
+                        <label class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <input type="radio" name="filter_mode_mobile" value="suggestion"
+                                onchange="toggleFilterMode(this.value, 'mobile')"
+                                class="w-4 h-4 text-custom-purple-600 bg-gray-100 border-gray-300 focus:ring-custom-purple-500 dark:bg-gray-600 dark:border-gray-500">
+                            <span class="ml-2">সাজেশন</span>
+                        </label>
+                        <label class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            <input type="radio" name="filter_mode_mobile" value="model_test"
+                                onchange="toggleFilterMode(this.value, 'mobile')"
+                                class="w-4 h-4 text-custom-purple-600 bg-gray-100 border-gray-300 focus:ring-custom-purple-500 dark:bg-gray-600 dark:border-gray-500">
+                            <span class="ml-2">মডেল টেস্ট</span>
+                        </label>
+                    </div>
+                </div> -->
+
+                <div id="dynamic-filter-container" class="space-y-6">
+                    <div id="source-filter-wrapper">
+                        <label for="source-select"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">প্রশ্নের উৎস
+                            (Source)</label>
+                        <select id="source-select" onchange="toggleBoardFilters()"
+                            class="w-full p-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-custom-purple-500 focus:border-custom-purple-500 transition-colors shadow-sm">
+                            <option value="all">সকল উৎস</option>
+                            <option value="board">বোর্ড প্রশ্ন</option>
+                            <option value="school">বিখ্যাত স্কুলের প্রশ্ন</option>
+                            <option value="custom">নিজস্ব প্রশ্ন</option>
+                        </select>
+                    </div>
+
+                    <div id="sidebar-year-filter" class="hidden">
+                        <label for="year-select"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">সাল (Year)</label>
+                        <select id="year-select"
+                            class="w-full p-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-custom-purple-500 focus:border-custom-purple-500 transition-colors shadow-sm">
+                            <option>২০২৪</option>
+                            <option>২০২৩</option>
+                            <option>২০২২</option>
+                            <option>২০২১</option>
+                            <option>২০২০</option>
+                            <option>২০১৯</option>
+                            <option>২০১৮</option>
+                        </select>
+                    </div>
+
+                    <div id="board-name-filter" class="hidden">
+                        <label for="board-select"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">বোর্ডের নাম</label>
+                        <select id="board-select"
+                            class="w-full p-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-custom-purple-500 focus:border-custom-purple-500 transition-colors shadow-sm">
+                            <option>ঢাকা বোর্ড</option>
+                            <option>চট্টগ্রাম বোর্ড</option>
+                            <option>রাজশাহী বোর্ড</option>
+                            <option>যশোর বোর্ড</option>
+                            <option>সিলেট বোর্ড</option>
+                            <option>কুমিল্লা বোর্ড</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 border-b pb-2">কঠিনতার
+                        স্তর (Difficulty)</label>
+                    <div class="space-y-2">
+                        <label
+                            class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-custom-purple-600 dark:hover:text-custom-purple-400">
+                            <input type="checkbox"
+                                class="mr-3 w-4 h-4 rounded text-custom-purple-600 bg-gray-100 border-gray-300 focus:ring-custom-purple-500 dark:bg-gray-600 dark:border-gray-500"
+                                checked> সহজ (Easy)
+                        </label>
+                        <label
+                            class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-custom-purple-600 dark:hover:text-custom-purple-400">
+                            <input type="checkbox"
+                                class="mr-3 w-4 h-4 rounded text-custom-purple-600 bg-gray-100 border-gray-300 focus:ring-custom-purple-500 dark:bg-gray-600 dark:border-gray-500"
+                                checked> মধ্যম (Medium)
+                        </label>
+                        <label
+                            class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-custom-purple-600 dark:hover:text-custom-purple-400">
+                            <input type="checkbox"
+                                class="mr-3 w-4 h-4 rounded text-custom-purple-600 bg-gray-100 border-gray-300 focus:ring-custom-purple-500 dark:bg-gray-600 dark:border-gray-500">
+                            কঠিন (Hard)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 border-b pb-2">জ্ঞানমূলক
+                        স্তর (Cognitive Level)</label>
+                    <div class="space-y-2">
+                        <label
+                            class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-green-600 dark:hover:text-green-400">
+                            <input type="checkbox"
+                                class="mr-3 w-4 h-4 rounded text-green-600 bg-gray-100 border-gray-300 focus:ring-green-500 dark:bg-gray-600 dark:border-gray-500"
+                                checked> জ্ঞান (Knowledge)
+                        </label>
+                        <label
+                            class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-yellow-600 dark:hover:text-yellow-400">
+                            <input type="checkbox"
+                                class="mr-3 w-4 h-4 rounded text-yellow-600 bg-gray-100 border-gray-300 focus:ring-yellow-500 dark:bg-gray-600 dark:border-gray-500"
+                                checked> অনুধাবন (Understanding)
+                        </label>
+                        <label
+                            class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-orange-600 dark:hover:text-orange-400">
+                            <input type="checkbox"
+                                class="mr-3 w-4 h-4 rounded text-orange-600 bg-gray-100 border-gray-300 focus:ring-orange-500 dark:bg-gray-600 dark:border-gray-500">
+                            প্রয়োগ (Application)
+                        </label>
+                        <label
+                            class="flex items-center text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-custom-purple-600 dark:hover:text-custom-purple-400">
+                            <input type="checkbox"
+                                class="mr-3 w-4 h-4 rounded text-custom-purple-600 bg-gray-100 border-gray-300 focus:ring-custom-purple-500 dark:bg-gray-600 dark:border-gray-500">
+                            উচ্চতর দক্ষতা (Hots)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">টপিক/ধারণা
+                        সার্চ</label>
+                    <input type="text" placeholder="যেমন: সালোকসংশ্লেষণ, অম্ল-ক্ষারক"
+                        class="w-full p-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-custom-purple-500 focus:border-custom-purple-500 transition-colors shadow-sm">
+                </div>
+
+                <button onclick="toggleFilterSidebar()"
+                    class="w-full py-2.5 bg-custom-purple-600 text-white font-semibold rounded-lg hover:bg-custom-purple-700 transition-colors mt-6 shadow-lg shadow-custom-purple-500/50 dark:shadow-custom-purple-700/50">
+                    <svg class="w-5 h-5 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    ফিল্টার প্রয়োগ করুন
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="a4-preview-modal" onclick="closeA4PreviewModal(event)">
+        <div id="a4-preview-modal-content" class="bg-white dark:bg-gray-800 p-4 sm:p-8"
+            onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white">প্রশ্নপত্রের প্রিভিউ</h3>
+                <button onclick="closeA4PreviewModal()" class="text-gray-500 hover:text-red-700 p-2 rounded-full">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">নির্বাচিত: <span id="selected-count-modal"
+                    class="font-bold text-red-600">0</span> টি | মোট নম্বর: <span id="preview-marks-modal"
+                    class="font-bold text-red-600">0</span></p>
+
+            <div id="a4-preview-mobile"
+                class="a4-print-area bg-white border border-gray-300 dark:border-gray-600 p-6 text-black text-custom-xs rounded-lg">
+            </div>
+
+            <div class="space-y-2 mt-4">
+                <button onclick="toggleA4Page()" id="page-toggle-btn-modal"
+                    class="w-full py-2 text-sm bg-custom-purple-600 text-white font-semibold rounded-lg hover:bg-custom-purple-700 transition-colors hidden shadow-md">
+                    Page 2/2 দেখান ➡️
+                </button>
+                <button onclick="window.print()"
+                    class="w-full py-2 text-sm bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center shadow-md">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 17h2v5H5v-5h2m0-5h10v5H7v-5zM7 3h10v2H7V3zM7 7h10v2H7V7z"></path>
+                    </svg>
+                    Download PDF / Print
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Configuration
+        const MAX_MCQ = 30;
+        const MAX_MCQ_PER_COLUMN = 15;
+        const MIN_CQ_FOR_COLUMN = 4;
+        const MAX_CQ_PER_COLUMN = 3;
+
+        // DOM Elements 
+        const questionListDiv = document.getElementById('question-list');
+        const previewQuestionList = document.getElementById('preview-question-list');
+        const a4PreviewDiv = document.getElementById('a4-preview');
+        const filterSidebar = document.getElementById('filter-sidebar');
+        const a4PreviewModal = document.getElementById('a4-preview-modal'); // ✅ Fixed: DOM Element variable used
+        const mobilePreviewCountSpan = document.getElementById('mobile-preview-count');
+        const selectedQuestions = new Map();
+        let currentPageView = 1;
+
+        // --- DUMMY DATA ---
+        const allQuestions = [
+            { id: 'cq1', text: "বাংলাদেশের বায়ু দূষণের কারণগুলো ব্যাখ্যা করো (ক, খ, গ, ঘ সহ)।", marks: 10, type: 'cq', level: 'উচ্চতর দক্ষতা', tags: ['পরিবেশ', 'দূষণ', 'সমাধান'] },
+            { id: 'cq2', text: "গ্রিনহাউস গ্যাসের ভূমিকা ব্যাখ্যা করো এবং জলবায়ু পরিবর্তনে এর প্রভাব লেখো।", marks: 10, type: 'cq', level: 'প্রয়োগ', tags: ['জলবায়ু', 'বায়ুমণ্ডল', 'গ্যাস'] },
+            { id: 'cq3', text: "সালোকসংশ্লেষণ প্রক্রিয়ার গুরুত্ব ও ধাপগুলো বর্ণনা করো।", marks: 8, type: 'cq', level: 'অনুধাবন', tags: ['উদ্ভিদ', 'কোষ', 'শক্তি'] },
+            { id: 'cq4', text: "উদ্দীপকের আলোকে বর্জ্য ব্যবস্থাপনার উপর একটি বিশদ প্রতিবেদন তৈরি করো।", marks: 10, type: 'cq', level: 'উচ্চতর দক্ষতা', tags: ['পরিবেশ', 'বর্জ্য', 'প্রতিবেদন'] },
+            { id: 'cq5', text: "ফসল উৎপাদনে রাসায়নিক সারের বিকল্প হিসেবে জৈব সারের সুবিধাগুলো বিশ্লেষণ করো।", marks: 8, type: 'cq', level: 'প্রয়োগ', tags: ['কৃষি', 'সার', 'পরিবেশ'] },
+            { id: 'cq6', text: "মানবদেহের রোগ প্রতিরোধ ক্ষমতা বৃদ্ধিতে খাদ্যের ভূমিকা আলোচনা করো।", marks: 7, type: 'cq', level: 'অনুধাবন', tags: ['স্বাস্থ্য', 'খাদ্য', 'রোগ'] },
+            { id: 'q4', text: "শব্দ দূষণের ফলে মানবদেহে কোন রোগ হতে পারে?", correct: "উচ্চ রক্তচাপ", incorrect: ["ডায়রিয়া", "প্লেগ", "টাইফয়েড"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: ['স্বাস্থ্য', 'শব্দ'] },
+            { id: 'q5', text: "ওজোন স্তর ক্ষয়ের জন্য দায়ী কোন গ্যাস?", correct: "ক্লোরোফ্লুরোকার্বন (CFC)", incorrect: ["কার্বন ডাইঅক্সাইড", "মিথেন", "নাইট্রোজেন"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: ['রসায়ন', 'স্তর'] },
+            { id: 'q6', text: "কোনটি নবায়নযোগ্য শক্তির উৎস?", correct: "সৌরশক্তি", incorrect: ["পেট্রোলিয়াম", "কয়লা", "প্রাকৃতিক গ্যাস"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: ['শক্তি', 'নবায়ন'] },
+            { id: 'q7', text: "মানবদেহের স্বাভাবিক তাপমাত্রা কত?", correct: "৯৮.৬° ফারেনহাইট", incorrect: ["১০০° ফারেনহাইট", "৯৬° ফারেনহাইট", "৯৭.৫° ফারেনহাইট"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: ['দেহ', 'তাপমাত্রা'] },
+            { id: 'q8', text: "নিচের কোনটি পতঙ্গবাহিত রোগ?", correct: "ডেঙ্গু", incorrect: ["ডায়াবেটিস", "ক্যান্সার", "আর্থ্রাইটিস"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: ['রোগ', 'পতঙ্গ'] },
+            { id: 'q9', text: "সূর্য থেকে পৃথিবীতে আলো আসতে প্রায় কত সময় লাগে?", correct: "৮ মিনিট ২০ সেকেন্ড", incorrect: ["১ মিনিট", "২০ মিনিট", "২ ঘণ্টা"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: ['আলো', 'সময়'] },
+            { id: 'q10', text: "পানিবাহিত রোগ কোনটি?", correct: "কলেরা", incorrect: ["হাম", "এইডস", "ইনফ্লুয়েঞ্জা"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: ['পানি', 'রোগ'] },
+            { id: 'q11', text: "আলোর প্রতিসরণের সূত্র কয়টি?", correct: "দুটি", incorrect: ["একটি", "তিনটি", "চারটি"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: [' আলো', 'সূত্র'] },
+            { id: 'q12', text: "কোনটি মৌলিক পদার্থ?", correct: "সোনা", incorrect: ["পানি", "চিনি", "লবণ"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: ['রসায়ন', 'মৌলিক'] },
+            { id: 'q13', text: "উদ্ভিদ খাদ্য তৈরি করে কিসের সাহায্যে?", correct: "সালোকসংশ্লেষণ", incorrect: ["শ্বসন", "প্রস্বেদন", "অভিস্রবণ"], type: 'mcq', marks: 1, level: 'অনুধাবন', tags: ['উদ্ভিদ', 'খাদ্য'] },
+            { id: 'q14', text: "পিঁপড়ার কামড়ে কোন অ্যাসিড থাকে?", correct: "ফরমিক অ্যাসিড", incorrect: ["অ্যাসেটিক অ্যাসিড", "সাইট্রিক অ্যাসিড", "ল্যাকটিক অ্যাসিড"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: ['রসায়ন', 'অ্যাসিড'] },
+            { id: 'q15', text: "মানবদেহের সবচেয়ে বড় অঙ্গ কোনটি?", correct: "ত্বক", incorrect: ["হৃদপিণ্ড", "যকৃৎ", "ফুসফুস"], type: 'mcq', marks: 1, level: 'জ্ঞান', tags: ['দেহ', 'ত্বক'] },
+        ];
+
+        // --- CORE LOGIC ---
+        function updatePreview(isModal = false) {
+            let totalMarks = 0;
+            const questionsArray = Array.from(selectedQuestions.values());
+            questionsArray.forEach(q => { totalMarks += parseInt(q.marks); });
+
+            const selectedCountSpan = document.getElementById('selected-count');
+            const previewMarksSpan = document.getElementById('preview-marks');
+            const previewMarksHeaderSpan = document.getElementById('preview-marks-header');
+            const count = questionsArray.length;
+
+            if (selectedCountSpan) selectedCountSpan.textContent = count;
+            if (previewMarksSpan) previewMarksSpan.textContent = totalMarks;
+            if (previewMarksHeaderSpan) previewMarksHeaderSpan.textContent = totalMarks;
+
+            // Mobile/Modal Counts
+            if (mobilePreviewCountSpan) mobilePreviewCountSpan.textContent = count;
+            const selectedCountModal = document.getElementById('selected-count-modal');
+            const previewMarksModal = document.getElementById('preview-marks-modal');
+            if (selectedCountModal) selectedCountModal.textContent = count;
+            if (previewMarksModal) previewMarksModal.textContent = totalMarks;
+
+            // Determine target for rendering
+            let targetList = previewQuestionList;
+            let targetDiv = a4PreviewDiv;
+            let targetPageToggle = document.getElementById('page-toggle-btn');
+
+            if (isModal) {
+                targetDiv = document.getElementById('a4-preview-mobile');
+                // Clear and prepare for modal
+                targetDiv.innerHTML = `
+                    <div class="text-center mb-6 border-b-2 border-custom-purple-200 pb-2">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900" id="header-school-name-modal">ঢাকা মডেল হাই স্কুল</h3>
+                        <p class="text-xs sm:text-sm">বিষয়: বাংলা | পূর্ণমান: ${totalMarks} | সময়: ২ ঘণ্টা | <span id="page-display-modal">Page 1/1</span></p>
+                    </div>
+                    <ol id="modal-preview-list" class="preview-list list-decimal pl-5 space-y-2"></ol>
+                 `;
+                targetList = document.getElementById('modal-preview-list');
+                targetPageToggle = document.getElementById('page-toggle-btn-modal');
+            } else {
+                if (previewQuestionList) previewQuestionList.innerHTML = '';
+            }
+
+            const onlyMCQSelected = questionsArray.every(q => q.type === 'mcq');
+            const onlyCQSelected = questionsArray.every(q => q.type === 'cq');
+            const totalMCQ = questionsArray.filter(q => q.type === 'mcq').length;
+            const totalCQ = questionsArray.filter(q => q.type === 'cq').length;
+            const totalQuestions = questionsArray.length;
+
+            let useTwoColumns = false;
+            let questionsPerColumn = totalQuestions;
+
+            if (onlyMCQSelected && totalMCQ > 1) {
+                useTwoColumns = true;
+                questionsPerColumn = MAX_MCQ_PER_COLUMN;
+            } else if (onlyCQSelected && totalCQ >= MIN_CQ_FOR_COLUMN) {
+                useTwoColumns = true;
+                questionsPerColumn = MAX_CQ_PER_COLUMN;
+            } else if (!onlyMCQSelected && !onlyCQSelected && totalQuestions > 5) {
+                // If mixed, use single column by default unless MCQs dominate
+                if (totalMCQ > 5) { // Arbitrary mixed-mode column split point
+                    useTwoColumns = true;
+                    questionsPerColumn = 6; // Use smaller number for mixed-mode split
+                } else {
+                    useTwoColumns = false;
+                    questionsPerColumn = totalQuestions;
+                }
+            }
+
+
+            targetDiv.classList.remove('two-column-layout-print');
+            if (targetList) targetList.classList.remove('two-column-layout-live');
+            if (targetPageToggle) targetPageToggle.classList.add('hidden');
+
+            let currentDisplaySpan = document.getElementById('page-display');
+            if (isModal) currentDisplaySpan = document.getElementById('page-display-modal');
+
+            if (!currentDisplaySpan) return;
+
+            if (useTwoColumns && totalQuestions > questionsPerColumn) {
+                const totalPages = Math.ceil(totalQuestions / questionsPerColumn);
+                if (targetPageToggle) targetPageToggle.classList.remove('hidden');
+                currentDisplaySpan.textContent = `Page ${currentPageView}/${totalPages}`;
+
+                if (targetPageToggle) targetPageToggle.textContent = (currentPageView === 1)
+                    ? `Page 2/${totalPages} দেখান ➡️`
+                    : `⬅️ Page 1/${totalPages} দেখান`;
+
+                targetDiv.classList.add('two-column-layout-print');
+                if (targetList) targetList.classList.add('two-column-layout-live');
+            } else {
+                currentDisplaySpan.textContent = `Page 1/1`;
+                currentPageView = 1;
+            }
+
+            // Clear all hidden-page-2 classes before rendering
+            if (targetList) {
+                targetList.querySelectorAll('.hidden-page-2').forEach(el => el.classList.remove('hidden-page-2'));
+                targetList.innerHTML = ''; // Clear list for re-rendering
+            }
+
+            questionsArray.forEach((q, index) => {
+                const li = document.createElement('li');
+                li.className = 'text-gray-900 list-item';
+
+                // Hide or show based on current page view
+                if (useTwoColumns && totalQuestions > questionsPerColumn) {
+                    if (currentPageView === 1 && index >= questionsPerColumn) {
+                        li.classList.add('hidden-page-2');
+                    }
+                    else if (currentPageView === 2 && index < questionsPerColumn) {
+                        li.classList.add('hidden-page-2');
+                    }
+                }
+
+                const cleanedText = q.text.replace(/^\d+\.\s*/, '');
+
+                li.innerHTML = `
+                    <div class="flex justify-between items-start cq-preview-content">
+                        <span class="flex-grow font-semibold">${cleanedText}</span>
+                        <span class="ml-4 font-normal text-custom-xxs text-gray-500">(${q.marks})</span>
+                    </div>
+                    ${q.previewHtml ? q.previewHtml.replace(/text-custom-xxs/g, 'text-custom-xs').replace(/'/g, '"') : ''}
+                `;
+
+                // Column Break for printing/live preview
+                if (useTwoColumns && index === questionsPerColumn - 1) {
+                    li.style.breakAfter = 'column';
+                    li.style.pageBreakAfter = 'always';
+                } else {
+                    li.style.breakAfter = 'auto';
+                    li.style.pageBreakAfter = 'auto';
+                }
+
+                if (targetList) targetList.appendChild(li);
+            });
+
+            // Update checkbox states after rendering
+            document.querySelectorAll('.question-checkbox').forEach(checkbox => {
+                const card = checkbox.closest('.question-card');
+                const questionId = card.dataset.questionId;
+
+                checkbox.checked = selectedQuestions.has(questionId);
+
+                const isMCQ = card.dataset.type === 'mcq';
+                const currentMCQCount = Array.from(selectedQuestions.values()).filter(q => q.type === 'mcq').length;
+
+                if (!checkbox.checked && isMCQ && currentMCQCount >= MAX_MCQ) {
+                    checkbox.disabled = true;
+                    card.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    checkbox.disabled = false;
+                    card.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+
+                if (checkbox.checked) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+        }
+
+
+        // --- MOBILE/MODAL FUNCTIONS ---
+        function toggleBodyScroll(enable) {
+            document.body.classList.toggle('no-scroll', !enable);
+        }
+
+        window.openA4PreviewModal = function () {
+            currentPageView = 1;
+            updatePreview(true);
+            a4PreviewModal.classList.add('open');
+            a4PreviewModal.style.display = 'flex';
+            toggleBodyScroll(false);
+        }
+
+        // ✅ Fixed: Close modal function to correctly check backdrop click
+        window.closeA4PreviewModal = function (event) {
+            if (event && event.target !== a4PreviewModal) return;
+            a4PreviewModal.classList.remove('open');
+            // Give time for transition, then set display to none
+            setTimeout(() => { a4PreviewModal.style.display = 'none'; toggleBodyScroll(true); }, 300);
+        }
+
+        window.toggleFilterSidebar = function () {
+            filterSidebar.classList.toggle('open');
+
+            const isOpen = filterSidebar.classList.contains('open');
+            if (window.innerWidth < 1024) {
+                toggleBodyScroll(!isOpen);
+            }
+        }
+
+        // --- SHARED FUNCTIONS ---
+        window.toggleA4Page = function () {
+            currentPageView = (currentPageView === 1) ? 2 : 1;
+            if (a4PreviewModal.classList.contains('open')) {
+                updatePreview(true);
+            }
+            if (window.innerWidth >= 1024) {
+                updatePreview(false);
+            }
+        }
+
+        function handleCheckboxChange() {
+            const card = this.closest('.question-card');
+            const questionId = card.dataset.questionId;
+            const questionType = card.dataset.type;
+            const questionText = card.dataset.questionText;
+
+            if (this.checked) {
+                const currentMCQCount = Array.from(selectedQuestions.values()).filter(q => q.type === 'mcq').length;
+
+                if (questionType === 'mcq' && currentMCQCount >= MAX_MCQ) {
+                    this.checked = false;
+                    alert(`MCQ-এর জন্য আপনি সর্বোচ্চ ${MAX_MCQ}টি প্রশ্ন নির্বাচন করতে পারবেন!`);
+                    return;
+                }
+
+                selectedQuestions.set(questionId, {
+                    text: questionText,
+                    marks: card.dataset.marks,
+                    previewHtml: card.dataset.previewHtml || '',
+                    type: questionType
+                });
+            } else {
+                selectedQuestions.delete(questionId);
+            }
+            currentPageView = 1;
+            updatePreview(false);
+        }
+
+        function initializeQuestionListeners() {
+            document.querySelectorAll('.question-checkbox').forEach(checkbox => {
+                checkbox.removeEventListener('change', handleCheckboxChange);
+                checkbox.addEventListener('change', handleCheckboxChange);
+            });
+            updatePreview(false);
+        }
+
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const filterType = this.dataset.type;
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+
+                document.querySelectorAll('.question-card').forEach(card => {
+                    card.style.display = (card.dataset.type === filterType) ? 'block' : 'none';
+                });
+
+                currentPageView = 1;
+                updatePreview(false);
+            });
+        });
+
+
+        // 🟢 Filter Mode Toggle (Suggestion/Model Test)
+        window.toggleFilterMode = function (mode, location = 'pc') {
+            let yearFilterDiv, sourceFilterDiv, boardFilterDiv;
+
+            if (location === 'pc') {
+                yearFilterDiv = document.getElementById('pc-year-filter');
+                sourceFilterDiv = document.getElementById('pc-source-filter');
+                // PC doesn't have board filter in this design, so we skip it.
+            } else { // Mobile Sidebar (Overlay)
+                yearFilterDiv = document.getElementById('sidebar-year-filter');
+                sourceFilterDiv = document.getElementById('source-filter-wrapper');
+                boardFilterDiv = document.getElementById('board-name-filter');
+            }
+
+            if (!yearFilterDiv || !sourceFilterDiv) return;
+
+            if (mode === 'suggestion' || mode === 'model_test') {
+                // Show Year Filter, Hide Source/Board Filters
+                yearFilterDiv.classList.remove('hidden');
+                sourceFilterDiv.classList.add('hidden');
+                if (boardFilterDiv) boardFilterDiv.classList.add('hidden'); // Mobile Only
+            } else {
+                // mode === 'all'
+                // Show Source Filter, Hide Year Filter
+                yearFilterDiv.classList.add('hidden');
+                sourceFilterDiv.classList.remove('hidden');
+
+                // If "All Questions" is selected, we need to re-check if the Source Filter itself needs to show the Board Filter.
+                if (location === 'mobile') {
+                    window.toggleBoardFilters();
+                } else if (location === 'pc') {
+                    // For PC, explicitly hide year filter when in 'all' mode
+                    yearFilterDiv.classList.add('hidden');
+                }
+            }
+        }
+
+        // Board Filter Toggle (Used with 'all' mode and 'board' source)
+        window.toggleBoardFilters = function () {
+            const sourceSelect = document.getElementById('source-select');
+            const boardFilterDiv = document.getElementById('board-name-filter');
+            const yearFilterDiv = document.getElementById('sidebar-year-filter');
+
+            // Check if the current mode is 'all'
+            const filterModeRadio = document.querySelector('input[name="filter_mode_mobile"]:checked');
+            const isAllMode = filterModeRadio && filterModeRadio.value === 'all';
+
+
+            if (sourceSelect && boardFilterDiv && yearFilterDiv && isAllMode) {
+                // If in 'all' mode, then control visibility based on the Source Select value
+                if (sourceSelect.value === 'board') {
+                    boardFilterDiv.classList.remove('hidden');
+                    yearFilterDiv.classList.remove('hidden');
+                } else {
+                    boardFilterDiv.classList.add('hidden');
+                    yearFilterDiv.classList.add('hidden');
+                }
+            } else if (sourceSelect && boardFilterDiv && yearFilterDiv && !isAllMode) {
+                // If not in 'all' mode (i.e., suggestion/model test is selected), force hide board filter.
+                boardFilterDiv.classList.add('hidden');
+            }
+        }
+
+        // --- Card Generation Functions ---
+        function generateMcqCard(qId, qText, correctOption, incorrectOptions, marks, level, tags) {
+            // ✅ Fixed: Ensure options are shuffled and keys (ক, খ, গ, ঘ) are assigned after shuffling
+            const options = [
+                { text: incorrectOptions[0], correct: false },
+                { text: correctOption, correct: true },
+                { text: incorrectOptions[1], correct: false },
+                { text: incorrectOptions[2], correct: false }
+            ].sort(() => Math.random() - 0.5);
+
+            const keys = ['ক', 'খ', 'গ', 'ঘ'];
+            let displayOptions = '';
+            let previewHtml = `<div class='text-custom-xs text-gray-900 ml-5 mt-1 mb-1 space-y-0.5' style="line-height:1.2;">`;
+
+            options.forEach((opt, index) => {
+                opt.key = keys[index];
+                displayOptions += `<p>(${opt.key}) ${opt.text}</p>`;
+                // ✅ Fixed: Replaced single quotes for data-preview-html consistency
+                previewHtml += `<p>(${opt.key}) ${opt.text}</p>`;
+            });
+            previewHtml += '</div>';
+
+            const tagsHtml = tags.map(tag => `<span class="px-2 py-0.5 rounded-full text-custom-xxs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300 whitespace-nowrap">${tag}</span>`).join('');
+
+            const levelClass = {
+                'জ্ঞান': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                'অনুধাবন': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                'প্রয়োগ': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-400',
+                'উচ্চতর দক্ষতা': 'bg-custom-purple-100 text-custom-purple-800 dark:bg-custom-purple-900 dark:text-custom-purple-300'
+            }[level] || 'bg-custom-purple-100 text-custom-purple-800 dark:bg-custom-purple-900 dark:text-custom-purple-300';
+
+
+            return `
+                <div class="question-card bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-md border-l-4 border-custom-purple-400 dark:border-custom-purple-600 transition-shadow hover:shadow-lg" 
+                    data-question-text="${qText}" data-question-id="${qId}" data-marks="${marks}" data-type="mcq"
+                    data-level="${level}" data-tags="${tags.join(',')}" 
+                    data-preview-html="${previewHtml.replace(/"/g, "'")}" style="display: none;">
+                    <div class="flex items-start w-full">
+                        <input type="checkbox" class="question-checkbox w-5 h-5 mt-1 text-custom-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-custom-purple-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer flex-shrink-0">
+                        <div class="ml-3 sm:ml-4 flex-grow">
+                            <p class="text-sm sm:text-base font-bold text-custom-purple-700 dark:text-custom-purple-400 mb-2 question-text-display">${qId}. ${qText}</p>
+                            <div class="text-sm text-gray-700 dark:text-gray-300 space-y-1">${displayOptions}</div>
+                            
+                            <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+                                <div class="flex flex-wrap gap-2 items-center text-xs">
+                                    <span class="px-2 py-0.5 rounded-full font-bold ${levelClass} whitespace-nowrap">${level}</span>
+                                    <span class="px-2 py-0.5 rounded-full font-bold bg-custom-purple-100 text-custom-purple-800 dark:bg-custom-purple-900 dark:text-custom-purple-300 whitespace-nowrap">Marks: ${marks}</span>
+                                    ${tagsHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateCqCard(qId, qText, marks, level, tags) {
+            const previewHtml = `<div class='text-custom-xs text-gray-900 mt-2 mb-2 h-16 border-b border-dashed border-gray-400'>**${qText.substring(0, 30)}...** [উত্তর লেখার জন্য ফাঁকা জায়গা]</div>`;
+
+            const tagsHtml = tags.map(tag => `<span class="px-2 py-0.5 rounded-full text-custom-xxs font-medium bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300 whitespace-nowrap">${tag}</span>`).join('');
+
+            const levelClass = {
+                'জ্ঞান': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                'অনুধাবন': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                'প্রয়োগ': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-400',
+                'উচ্চতর দক্ষতা': 'bg-custom-purple-100 text-custom-purple-800 dark:bg-custom-purple-900 dark:text-custom-purple-300'
+            }[level] || 'bg-custom-purple-100 text-custom-purple-800 dark:bg-custom-purple-900 dark:text-custom-purple-300';
+
+            return `
+                <div class="question-card bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-md border-l-4 border-custom-purple-400 dark:border-custom-purple-600 transition-shadow hover:shadow-lg" 
+                    data-question-text="${qText}" data-question-id="${qId}" data-marks="${marks}" data-type="cq"
+                    data-level="${level}" data-tags="${tags.join(',')}"
+                    data-preview-html="${previewHtml.replace(/"/g, "'")}">
+                    <div class="flex items-start w-full">
+                        <input type="checkbox" class="question-checkbox w-5 h-5 mt-1 text-custom-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-custom-purple-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer flex-shrink-0">
+                        <div class="ml-3 sm:ml-4 flex-grow">
+                            <p class="text-sm sm:text-base font-bold text-custom-purple-700 dark:text-custom-purple-400 mb-2 question-text-display">${qId}. ${qText}</p>
+                            
+                            <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+                                <div class="flex flex-wrap gap-2 items-center text-xs">
+                                    <span class="px-2 py-0.5 rounded-full font-bold ${levelClass} whitespace-nowrap">${level}</span>
+                                    <span class="px-2 py-0.5 rounded-full font-bold bg-custom-purple-100 text-custom-purple-800 dark:bg-custom-purple-900 dark:text-custom-purple-300 whitespace-nowrap">Marks: ${marks}</span>
+                                    ${tagsHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        // 🟢 ডার্ক মোড টগল লজিক
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const sunIcon = document.getElementById('sun-icon');
+            const moonIcon = document.getElementById('moon-icon');
+
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                localStorage.setItem('theme', 'light');
+                if (sunIcon) sunIcon.classList.remove('hidden');
+                if (moonIcon) moonIcon.classList.add('hidden');
+            } else {
+                document.documentElement.classList.remove('light');
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                if (sunIcon) sunIcon.classList.add('hidden');
+                if (moonIcon) moonIcon.classList.remove('hidden');
+            }
+        }
+
+        // প্রাথমিক সেটআপ
+        document.addEventListener('DOMContentLoaded', () => {
+            // ১. থিম চেক
+            const storedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            const sunIcon = document.getElementById('sun-icon');
+            const moonIcon = document.getElementById('moon-icon');
+
+            if (storedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                if (sunIcon) sunIcon.classList.add('hidden');
+                if (moonIcon) moonIcon.classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                if (sunIcon) sunIcon.classList.remove('hidden');
+                if (moonIcon) moonIcon.classList.add('hidden');
+            }
+            const themeToggleBtn = document.getElementById('theme-toggle-btn');
+            if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
+
+            // ২. প্রশ্ন লোড ও লিসেনার সেটআপ 
+            let htmlContent = '';
+            // Generate CQ cards with Q1, Q2, Q3... IDs
+            allQuestions.filter(q => q.type === 'cq').forEach((q, index) => {
+                htmlContent += generateCqCard(`Q${index + 1}`, q.text, q.marks, q.level, q.tags);
+            });
+            // Generate MCQ cards with M1, M2, M3... IDs
+            allQuestions.filter(q => q.type === 'mcq').forEach((q, index) => {
+                htmlContent += generateMcqCard(`M${index + 1}`, q.text, q.correct, q.incorrect, q.marks, q.level, q.tags);
+            });
+
+            questionListDiv.innerHTML = htmlContent;
+
+            initializeQuestionListeners();
+
+            // ৩. নিশ্চিত করুন যে CQ বাটনটি ক্লিকড এবং CQ প্রশ্নগুলো দৃশ্যমান (Default behavior)
+            const filterCqBtn = document.getElementById('filter-cq');
+            if (filterCqBtn) {
+                filterCqBtn.classList.add('active');
+                document.querySelectorAll('.question-card[data-type="cq"]').forEach(card => {
+                    card.style.display = 'block';
+                });
+            }
+
+            // ৪. বোর্ড/মোড ফিল্টার ইনিশিয়ালাইজেশন
+            const pcFilterMode = document.querySelector('input[name="filter_mode_pc"]:checked');
+            if (pcFilterMode) window.toggleFilterMode(pcFilterMode.value, 'pc');
+
+            const mobileFilterMode = document.querySelector('input[name="filter_mode_mobile"]:checked');
+            if (mobileFilterMode) window.toggleFilterMode(mobileFilterMode.value, 'mobile');
+
+            // ৫. উইন্ডো রিসাইজ ইভেন্ট
+            window.addEventListener('resize', () => {
+                if (window.innerWidth >= 1024) {
+                    toggleBodyScroll(true);
+                    filterSidebar.classList.remove('open');
+                    // ✅ Fixed: Check if modal is open before trying to close
+                    if (a4PreviewModal.classList.contains('open')) {
+                        a4PreviewModal.classList.remove('open');
+                        a4PreviewModal.style.display = 'none';
+                    }
+                }
+            });
+        });
+
+        // Placeholder functions 
+        window.openHeaderModal = function () { alert('হেডার এবং লোগো এডিটিং ফাংশনালিটি এখানে যোগ হবে।'); }
+
+    </script>
+</body>
+
+</html>
