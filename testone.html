@@ -390,7 +390,7 @@
     </style>
 </head>
 
-<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-x-hidden">
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-x-hidden lg:overflow-y-hidden">
 
     <header
         class="bg-custom-purple-700 dark:bg-gray-900 shadow-xl sticky top-0 z-40 py-3 px-4 sm:px-6 flex items-center justify-between no-print transition-colors duration-300">
@@ -512,13 +512,13 @@
 
         <div class="lg:col-span-1 w-full max-w-[100vw]">
 
-            <div class="sticky top-[64px] z-[999] bg-gray-50 dark:bg-gray-900 mb-3 no-print transition-colors duration-300 border-b border-gray-200 dark:border-gray-700 shadow-md">
+            <div class="lg:sticky top-[64px] z-[999] bg-gray-50 dark:bg-gray-900 mb-3 no-print transition-colors duration-300 border-b border-gray-200 dark:border-gray-700 shadow-md">
 
                 <div class="flex flex-wrap justify-between items-center gap-2 sm:gap-4  w-full max-w-7xl mx-auto  p-1 md:p-2">
 
                     <div class="flex items-center space-x-2 flex-wrap order-1 flex-shrink-0">
-                        <!-- <button id="filter-all" data-type="all" title="সকল প্রশ্ন" -->
-                        <button id="mobile-filter-button" data-type="all" title="সকল প্রশ্ন"
+                        <!-- <button id="mobile-filter-button" data-type="all" title="সকল প্রশ্ন" -->
+                        <button id="filter-all" data-type="all" title="সকল প্রশ্ন"
                             class="filter-btn active py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center"
                             aria-label="সকল প্রশ্ন">
                             <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -574,14 +574,14 @@
                                 </path>
                             </svg>
                         </button>
-                        <!-- <button id="mobile-filter-button" title="Filter Options"
+                        <button id="mobile-filter-button" title="Filter Options"
                             class="py-2 px-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center shadow-lg lg:hidden">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707v5.828a1 1 0 01-1.447.894l-4.243-2.122A1 1 0 013 15.586V4z">
                                 </path>
                             </svg>
-                        </button> -->
+                        </button>
                     </div>
 
                 </div>
@@ -644,9 +644,23 @@
                     </div>
 
                 </div>
-                <div class="m-2">
-                    <div
-                        class="z-999  relative w-full overflow-hidden rounded-lg bg-gray-800 shadow-xl border border-indigo-500 h-48">
+            </div>
+
+            <section id="qbank-section" class="content-section px-4 sm:px-8 pb-20">
+                <div id="left-panel">
+                    <div id="question-list-scroll-wrapper">
+                        <div id="question-list" class="space-y-4">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <div class="lg:col-span-1 p-4 hidden lg:block border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl">
+            
+                <div class=" mb-2 lg:sticky top-[64px] z-[999]">
+                    <div  class="z-999  relative w-full overflow-hidden rounded-lg bg-gray-800 shadow-xl border border-indigo-500 h-48">
                         <div id="quiz-carousel" class="flex transition-transform duration-300 ease-in-out h-full"
                             style="transform: translateX(0%);">
 
@@ -706,23 +720,8 @@
                         </button>
                     </div>
                 </div>
-            </div>
-
-            <section id="qbank-section" class="content-section px-4 sm:px-8 pb-20">
-                <div id="left-panel">
-                    <div id="question-list-scroll-wrapper">
-                        <div id="question-list" class="space-y-4">
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-        </div>
-
-        <div class="lg:col-span-1 p-4 hidden lg:block border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl">
             <div id="a4-preview-wrapper">
-                <h2 class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-4 no-print">লাইভ প্রিভিউ
-                </h2>
+                <!-- <h2 class="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-4 no-print">লাইভ প্রিভিউ</h2> -->
                 <div id="a4-preview"
                     class="a4-print-area bg-white border border-gray-300 dark:border-gray-600 shadow-inner p-6 sm:p-8 mb-4 text-black text-custom-xs print:shadow-none print:border-0 rounded-lg">
                     <div class="text-center mb-6 border-b-2 border-custom-purple-200 pb-2">
@@ -1386,6 +1385,80 @@
             });
             applyAllFilters();
         });
+
+
+
+
+
+// --- QUIZ CAROUSEL LOGIC (OPTIMIZED) ---
+const carousel = document.getElementById('quiz-carousel');
+const prevBtn = document.getElementById('prev-slide');
+const nextBtn = document.getElementById('next-slide');
+const dots = document.querySelectorAll('.dot');
+
+let currentSlide = 0;
+const totalSlides = dots.length;
+let autoSlideInterval; // টাইমার ভেরিয়েবল
+
+// স্লাইডার আপডেট করার ফাংশন
+function updateCarousel() {
+    carousel.style.transform = `translateX(-${currentSlide * 100}%)`;
+    
+    dots.forEach((dot, index) => {
+        if (index === currentSlide) {
+            dot.classList.add('bg-indigo-500');
+            dot.classList.remove('bg-gray-600');
+        } else {
+            dot.classList.remove('bg-indigo-500');
+            dot.classList.add('bg-gray-600');
+        }
+    });
+}
+
+// অটো স্লাইড শুরু করার ফাংশন (৩ সেকেন্ড পর পর)
+function startAutoSlide() {
+    stopAutoSlide(); // আগের টাইমার থাকলে বন্ধ করে নতুন শুরু করবে
+    autoSlideInterval = setInterval(() => {
+        currentSlide = (currentSlide + 1) % totalSlides;
+        updateCarousel();
+    }, 3000); // ৩০০০ মিলি-সেকেন্ড = ৩ সেকেন্ড
+}
+
+// অটো স্লাইড বন্ধ করার ফাংশন
+function stopAutoSlide() {
+    clearInterval(autoSlideInterval);
+}
+
+// পরবর্তী স্লাইড
+nextBtn.addEventListener('click', () => {
+    currentSlide = (currentSlide + 1) % totalSlides;
+    updateCarousel();
+    startAutoSlide(); // বাটন ক্লিক করলে টাইমার রিসেট হবে
+});
+
+// পূর্ববর্তী স্লাইড
+prevBtn.addEventListener('click', () => {
+    currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+    updateCarousel();
+    startAutoSlide(); // বাটন ক্লিক করলে টাইমার রিসেট হবে
+});
+
+// ডট নেভিগেশন
+dots.forEach(dot => {
+    dot.addEventListener('click', (e) => {
+        currentSlide = parseInt(e.target.dataset.slide);
+        updateCarousel();
+        startAutoSlide(); // ডট ক্লিক করলে টাইমার রিসেট হবে
+    });
+});
+
+// স্লাইডারের ওপর মাউস আনলে অটো স্লাইড বন্ধ হবে, সরিয়ে নিলে আবার শুরু হবে
+const carouselContainer = carousel.parentElement;
+carouselContainer.addEventListener('mouseenter', stopAutoSlide);
+carouselContainer.addEventListener('mouseleave', startAutoSlide);
+
+// পেজ লোড হওয়ার পর অটো স্লাইড শুরু
+startAutoSlide();
     </script>
 </body>
 
